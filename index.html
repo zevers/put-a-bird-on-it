@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Put a bird on it</title>
+<meta name="description" content="Procedurally drawn birds: perched or in flight, in line art or colour. Animate them and export a GIF.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%232f6fed'/%3E%3Cpath d='M12 38c6-12 16-18 28-16l8-6-2 10c2 14-8 22-20 20l-6 6 1-9z' fill='%23fff'/%3E%3Ccircle cx='41' cy='26' r='2.4' fill='%232f6fed'/%3E%3C/svg%3E">
+<style>
+  :root{
+    --bg:#f5f3ee; --bg2:#ebe8e0; --card:#ffffff; --ink:#1c1c1e; --muted:#6c6c70; --line:#e4e0d6;
+    --accent:#2f6fed; --accent-ink:#fff; --accent-soft:#e8efff; --shadow:0 1px 2px rgba(0,0,0,.05),0 8px 28px rgba(40,30,10,.08);
+    --radius:18px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#111113; --bg2:#18181b; --card:#1c1c20; --ink:#f3f3f5; --muted:#a0a0a8; --line:#2c2c32;
+      --accent:#6d9bff; --accent-ink:#0b1020; --accent-soft:#1f2a45; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 28px rgba(0,0,0,.35);
+    }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    color:var(--ink);background:radial-gradient(1200px 600px at 20% -10%,var(--bg2),var(--bg));min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1180px;margin:0 auto;padding:22px 20px 40px}
+  header{display:flex;align-items:center;gap:14px;margin-bottom:22px}
+  .logo{width:44px;height:44px;flex:none}
+  h1{font-size:26px;letter-spacing:-.02em;margin:0;line-height:1.1}
+  .tag{color:var(--muted);font-size:14px;margin-top:3px}
+  .layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:20px;align-items:start}
+  @media (max-width:900px){.layout{grid-template-columns:minmax(0,1fr)}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+  .stage{padding:14px;position:relative}
+  #out{display:block;line-height:0;border-radius:12px;overflow:hidden}
+  #out svg{width:100%;height:auto;display:block}
+  .status{position:absolute;left:26px;bottom:24px;font-size:12px;color:var(--ink);background:color-mix(in srgb,var(--card) 88%,transparent);
+    border:1px solid var(--line);border-radius:999px;padding:5px 11px;backdrop-filter:blur(6px);opacity:0;transition:opacity .2s;pointer-events:none}
+  .status.on{opacity:1}
+  .panel{padding:18px;display:flex;flex-direction:column;gap:18px}
+  .sec{display:flex;flex-direction:column;gap:9px}
+  .lab{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between;align-items:baseline}
+  .lab output{font-size:13px;letter-spacing:0;text-transform:none;color:var(--ink);font-weight:600}
+  button,.btn{font:inherit;cursor:pointer}
+  .primary{background:var(--accent);color:var(--accent-ink);border:0;border-radius:12px;padding:13px 16px;font-weight:650;font-size:15px;
+    transition:transform .08s,filter .15s}
+  .primary:hover{filter:brightness(1.07)} .primary:active{transform:scale(.98)}
+  .ghost{background:transparent;color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:14px;font-weight:550;
+    display:flex;align-items:center;justify-content:center;gap:8px;transition:background .15s,border-color .15s}
+  .ghost:hover{background:var(--bg2)} .ghost[aria-pressed=true]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+  .ghost:disabled{opacity:.5;cursor:progress}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .seg{display:grid;grid-template-columns:repeat(3,1fr);background:var(--bg2);border-radius:12px;padding:3px;gap:3px}
+  .seg input{position:absolute;opacity:0;pointer-events:none}
+  .seg label{text-align:center;padding:8px 6px;border-radius:9px;font-size:14px;font-weight:550;cursor:pointer;color:var(--muted);transition:background .15s,color .15s}
+  .seg input:checked+label{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+  .seg input:focus-visible+label{outline:2px solid var(--accent)}
+  input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:30px;background:transparent;margin:0}
+  input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:99px;background:linear-gradient(90deg,var(--line),var(--accent))}
+  input[type=range]::-moz-range-track{height:6px;border-radius:99px;background:linear-gradient(90deg,var(--line),var(--accent))}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:var(--card);border:2px solid var(--accent);margin-top:-8px;box-shadow:0 1px 4px rgba(0,0,0,.25)}
+  input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:var(--card);border:2px solid var(--accent)}
+  .ticks{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);padding:0 4px;margin-top:-4px}
+  .swatches{display:flex;gap:6px;flex-wrap:wrap;min-height:26px;align-items:center}
+  .swatches i{width:26px;height:26px;border-radius:50%;border:1px solid rgba(0,0,0,.18);display:block;animation:pop .25s both}
+  .swatches span{font-size:13px;color:var(--muted)}
+  @keyframes pop{from{transform:scale(.4);opacity:0}to{transform:none;opacity:1}}
+  .check{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:550;cursor:pointer;user-select:none}
+  .check input{position:absolute;opacity:0}
+  .check .box{width:40px;height:24px;border-radius:99px;background:var(--line);position:relative;transition:background .2s;flex:none}
+  .check .box::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:transform .2s}
+  .check input:checked+.box{background:var(--accent)} .check input:checked+.box::after{transform:translateX(16px)}
+  .check input:focus-visible+.box{outline:2px solid var(--accent);outline-offset:2px}
+  .bar{height:4px;border-radius:99px;background:var(--line);overflow:hidden;opacity:0;transition:opacity .2s}
+  .bar.on{opacity:1} .bar div{height:100%;width:0;background:var(--accent);transition:width .1s}
+  footer{margin-top:26px;text-align:center;font-size:12px;color:var(--muted)}
+  footer a{color:inherit}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <svg class="logo" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="16" fill="var(--accent)"/><path d="M12 38c6-12 16-18 28-16l8-6-2 10c2 14-8 22-20 20l-6 6 1-9z" fill="var(--accent-ink)"/><circle cx="41" cy="26" r="2.4" fill="var(--accent)"/></svg>
+    <div>
+      <h1>Put a bird on it</h1>
+      <div class="tag">Every bird is drawn feather by feather &mdash; perched or in flight, in line art or colour.</div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <div class="card stage">
+      <div id="out" role="img" aria-label="A procedurally generated bird"></div>
+      <div class="status" id="status"></div>
+    </div>
+
+    <aside class="card panel">
+      <button class="primary" id="new">New bird</button>
+
+      <div class="sec">
+        <div class="lab">Pose</div>
+        <div class="seg" role="radiogroup" aria-label="Pose">
+          <input type="radio" name="pose" id="p-perch" value="perch"><label for="p-perch">Perched</label>
+          <input type="radio" name="pose" id="p-fly" value="fly"><label for="p-fly">Flying</label>
+          <input type="radio" name="pose" id="p-any" value="any" checked><label for="p-any">Surprise</label>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="lab">Colour <output id="cval"></output></div>
+        <input type="range" id="colors" min="0" max="10" step="1" value="4" aria-label="Number of colours (0 is line art)">
+        <div class="ticks"><span>0</span><span>2</span><span>4</span><span>6</span><span>8</span><span>10</span></div>
+        <div class="swatches" id="swatches"></div>
+      </div>
+
+      <div class="sec">
+        <label class="check"><input type="checkbox" id="name" checked><span class="box"></span>Show bird name</label>
+        <label class="check"><input type="checkbox" id="frame" checked><span class="box"></span>Show frame</label>
+      </div>
+
+      <div class="sec">
+        <div class="lab">Animate</div>
+        <button class="ghost" id="animate" aria-pressed="false">&#9654;&ensp;Animate</button>
+        <div class="row2">
+          <button class="ghost" id="gif">Export GIF</button>
+          <button class="ghost" id="svg">Save SVG</button>
+        </div>
+        <button class="ghost" id="copy">Copy code</button>
+        <div class="bar" id="bar"><div></div></div>
+      </div>
+    </aside>
+  </div>
+
+  <footer>Put a bird on it &middot; inspired by <a href="https://github.com/LingDong-/fishdraw">fishdraw</a> by Lingdong Huang</footer>
+</div>
+
+<script src="birddraw.js"></script>
+<script src="gifenc.js"></script>
+<script>
+const $ = id=>document.getElementById(id);
+const state = {seed:new_seed(), pose:undefined, colors:4, name:true, frame:true};
+const anim = {on:false, svgs:null, key:'', delay:70, timer:null, gen:0, building:null};
+
+const keyOf = st=>[st.seed,st.pose,st.colors,st.name,st.frame].join('|');
+const key = ()=>keyOf(state);
+const svgOpts = ()=>({frame:state.frame});
+const slugOf = st=>'put-a-bird-on-it-'+st.seed.toLowerCase().replace(/[^a-z]+/g,'-').replace(/^-|-$/g,'');
+const slug = ()=>slugOf(state);
+
+function status(msg,pct){
+  $('status').textContent = msg||'';
+  $('status').classList.toggle('on',!!msg);
+  $('bar').classList.toggle('on',pct!==undefined);
+  if (pct !== undefined) $('bar').firstElementChild.style.width = Math.round(pct*100)+'%';
+}
+
+function swatches(){
+  let box = $('swatches');
+  box.innerHTML = '';
+  if (!state.colors){
+    box.innerHTML = '<span>Line art</span>';
+    return;
+  }
+  for (let c of bird_palette(state.seed,state.pose,state.colors)){
+    let i = document.createElement('i');
+    i.style.background = c;
+    box.appendChild(i);
+  }
+}
+
+function stopPlayback(){
+  clearInterval(anim.timer);
+  anim.timer = null;
+}
+
+function renderStatic(){
+  stopPlayback();
+  $('out').innerHTML = draw_svg(bird_main(state.seed,state.pose,state.colors,{name:state.name}),svgOpts());
+  $('cval').textContent = state.colors ? state.colors+(state.colors==1?' colour':' colours') : 'Line art';
+  swatches();
+}
+
+// Draw every frame of the loop for one specific bird (a snapshot of the settings),
+// in small steps so the page stays responsive. alive() lets a caller abandon the job.
+function runJob(st,alive){
+  return new Promise((resolve,reject)=>{
+    let job = bird_frame_job(st.seed,st.pose,st.colors,undefined,{name:st.name});
+    let i = 0;
+    (function step(){
+      if (!alive()){ reject(new Error('stale')); return; }
+      if (i < job.n){
+        job.step(i++);
+        status('Drawing frames '+i+' / '+job.n,i/job.n);
+        setTimeout(step,0);
+      }else{
+        resolve({svgs:job.finish().map(p=>draw_svg(p,{frame:st.frame})),delay:job.pose=='fly' ? 55 : 80});
+      }
+    })();
+  });
+}
+
+// frames for playback. any change to the bird bumps anim.gen, which abandons older builds.
+function buildFrames(st){
+  let k = keyOf(st);
+  if (anim.svgs && anim.key === k) return Promise.resolve({svgs:anim.svgs,delay:anim.delay});
+  if (anim.building && anim.building.key === k) return anim.building.promise;
+  let token = ++anim.gen;
+  let p = runJob(st,()=>token === anim.gen).then(r=>{
+    if (token === anim.gen){ anim.svgs = r.svgs; anim.key = k; anim.delay = r.delay; anim.building = null; status(''); }
+    return r;
+  });
+  p.catch(()=>{ if (anim.building && anim.building.promise === p) anim.building = null; });
+  anim.building = {key:k,promise:p};
+  return p;
+}
+
+function play(svgs,delay){
+  stopPlayback();
+  let f = 0, out = $('out');
+  anim.timer = setInterval(()=>{ out.innerHTML = svgs[f = (f+1)%svgs.length]; },delay);
+}
+
+// animate the bird that is selected right now; only starts playing if it still is when ready
+function startPlayback(){
+  let st = Object.assign({},state), k = keyOf(st);
+  buildFrames(st).then(r=>{
+    if (anim.on && keyOf(state) === k) play(r.svgs,r.delay);
+  }).catch(()=>{});
+}
+
+let rebuildTimer = null;
+function changed(){
+  anim.gen++;                 // whatever was being built or waiting to play is now out of date
+  anim.building = null;
+  clearTimeout(rebuildTimer);
+  renderStatic();             // stops the old animation and shows the selected bird
+  if (anim.on){
+    status('Animating the new bird…');
+    rebuildTimer = setTimeout(startPlayback,250);
+  }
+}
+
+function setAnimating(on){
+  anim.on = on;
+  $('animate').setAttribute('aria-pressed',on);
+  $('animate').innerHTML = on ? '&#9632;&ensp;Stop' : '&#9654;&ensp;Animate';
+  clearTimeout(rebuildTimer);
+  if (on){
+    startPlayback();
+  }else{
+    anim.gen++;
+    anim.building = null;
+    status('');
+    renderStatic();
+  }
+}
+
+function download(blob,name){
+  let a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },1000);
+}
+
+function svgToImage(svg){
+  return new Promise((resolve,reject)=>{
+    let img = new Image();
+    let url = URL.createObjectURL(new Blob([svg],{type:'image/svg+xml;charset=utf-8'}));
+    img.onload = ()=>{ URL.revokeObjectURL(url); resolve(img); };
+    img.onerror = ()=>{ URL.revokeObjectURL(url); reject(new Error('could not rasterise frame')); };
+    img.src = url;
+  });
+}
+
+async function exportGif(){
+  let btn = $('gif');
+  btn.disabled = true;
+  let snap = Object.assign({},state);       // the bird that is displayed when the button is pressed
+  let fname = slugOf(snap)+'.gif';
+  try{
+    let res;
+    if (anim.svgs && anim.key === keyOf(snap)){
+      res = {svgs:anim.svgs,delay:anim.delay};
+    }else{
+      try{
+        // join a playback build of this very bird if one is running, else draw our own
+        res = (anim.building && anim.building.key === keyOf(snap)) ? await anim.building.promise : await runJob(snap,()=>true);
+      }catch(e){
+        res = await runJob(snap,()=>true);
+      }
+    }
+    let svgs = res.svgs;
+    let scale = 1.5, W = Math.round(520*scale), H = Math.round(320*scale);
+    let cv = document.createElement('canvas');
+    cv.width = W; cv.height = H;
+    let ctx = cv.getContext('2d',{willReadFrequently:true});
+    let frames = [];
+    for (let i = 0; i < svgs.length; i++){
+      status('Rendering frame '+(i+1)+' / '+svgs.length,(i+1)/svgs.length/2);
+      let img = await svgToImage(svgs[i]);
+      ctx.fillStyle = '#fffaf0';
+      ctx.fillRect(0,0,W,H);
+      ctx.drawImage(img,0,0,W,H);
+      frames.push({data:ctx.getImageData(0,0,W,H).data,width:W,height:H});
+      await new Promise(r=>setTimeout(r,0));
+    }
+    status('Encoding GIF…',0.6);
+    await new Promise(r=>setTimeout(r,20));
+    let bytes = gif_encode(frames,Math.round(res.delay/10));
+    download(new Blob([bytes],{type:'image/gif'}),fname);
+    status('Saved one animated GIF: '+frames.length+' frames, '+Math.round(bytes.length/1024)+' KB');
+    setTimeout(()=>status(''),2200);
+  }catch(e){
+    status('Export failed: '+e.message); setTimeout(()=>status(''),3500);
+  }
+  $('bar').classList.remove('on');
+  btn.disabled = false;
+}
+
+// ---- wiring
+$('new').onclick = ()=>{ state.seed = new_seed(); changed(); };
+document.querySelectorAll('input[name=pose]').forEach(r=>r.onchange = ()=>{
+  state.pose = r.value=='any' ? undefined : r.value;
+  state.seed = new_seed();
+  changed();
+});
+let pending = null;
+$('colors').oninput = e=>{
+  state.colors = +e.target.value;
+  $('cval').textContent = state.colors ? state.colors+(state.colors==1?' colour':' colours') : 'Line art';
+  clearTimeout(pending);
+  pending = setTimeout(changed,30);
+};
+$('name').onchange = e=>{ state.name = e.target.checked; changed(); };
+$('frame').onchange = e=>{ state.frame = e.target.checked; changed(); };
+$('animate').onclick = ()=>setAnimating(!anim.on);
+$('gif').onclick = exportGif;
+const currentSvg = ()=>draw_svg(bird_main(state.seed,state.pose,state.colors,{name:state.name}),svgOpts());
+$('svg').onclick = ()=>download(new Blob([currentSvg()],{type:'image/svg+xml'}),slug()+'.svg');
+
+// copy the SVG markup of the bird as drawn right now
+async function copyText(text){
+  try{
+    await navigator.clipboard.writeText(text);
+    return true;
+  }catch(e){
+    // clipboard API blocked (insecure context, permissions): fall back to a hidden textarea
+    let ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly','');
+    ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+    document.body.appendChild(ta);
+    ta.select();
+    let ok = false;
+    try{ ok = document.execCommand('copy'); }catch(_){}
+    ta.remove();
+    return ok;
+  }
+}
+let copyTimer = null;
+$('copy').onclick = async ()=>{
+  let btn = $('copy');
+  let svg = currentSvg();
+  let ok = await copyText(svg);
+  btn.textContent = ok ? 'Copied \u2713' : 'Copy failed';
+  status(ok ? 'SVG code copied ('+Math.round(svg.length/1024)+' KB)' : 'Could not access the clipboard');
+  clearTimeout(copyTimer);
+  copyTimer = setTimeout(()=>{ btn.textContent = 'Copy code'; status(''); },1800);
+};
+
+renderStatic();
+</script>
+</body>
+</html>
